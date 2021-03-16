@@ -16,13 +16,14 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class SqlRun {
     public static void main(String[] args) {
         System.out.println("Hello world");
         // labelTest();
         try {
-            exampleGeneration();
+            exampleGeneration(5000);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -144,22 +145,26 @@ public class SqlRun {
         }
     }
 
-    public static void exampleGeneration() throws IOException {
+    public static void exampleGeneration(int countPerTable) throws IOException {
         QueryTemplateCollection.prepare();
         SqlExecutor executor = new SqlExecutor();
         QueryToRange transformer = new QueryToRange();
         ObjectMapper mapper = new ObjectMapper();
-        BufferedWriter writer = new BufferedWriter(new FileWriter("lable_10.txt"));
+        BufferedWriter writer = new BufferedWriter(new FileWriter("example_"+countPerTable + ".txt"));
+        List<QueryGenerator> generators = new ArrayList<>();
         executor.init();
         for (int i = 0; i <= 7; i++) {
-            QueryGenerator generator = new QueryGenerator(QueryTemplateCollection.templates.get(i));
-            for (int j = 0; j < 50000; j++) {
+            generators.add(new QueryGenerator(QueryTemplateCollection.templates.get(i)));
+        }
+        for (int j = 0; j < countPerTable; j++) {
+            for (int i = 0; i < 8; i++) {
                 Example example = new Example();
-                Query query = generator.next();
+                Query query = generators.get(i).next();
                 String sql = QueryProxy.queryToSql(query);
                 example.sql = sql;
                 example.ranges = transformer.transform(query);
                 example.label = executor.executeForLabel(sql);
+                example.from = query.table;
                 try {
                     String jsonString = mapper.writeValueAsString(example);
                     System.out.println(jsonString);
@@ -168,9 +173,8 @@ public class SqlRun {
                     e.printStackTrace();
                 }
             }
-
-
         }
+
         executor.close();
         writer.close();
     }
